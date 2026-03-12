@@ -45,8 +45,8 @@ ollama pull qwen2.5:7b
 
 sudo chown -R mdejurquet:mdejurquet /data/mdejurquet/model_ia 
 
-Si le projet n'a pas de documentation (summary, dependancies, arborescences..) initialisé avec : python3 scripts/init_target_project.py 
-
+Si le projet n'a pas de documentation (summary, dependancies, arborescences..) initialisé avec :
+python3 scripts/init_target_project.py 
 python3 back/server.py  
 
  
