@@ -25,3 +25,47 @@ Il permet de :
 git clone https://github.com/Nicolaevitch/Prompt_helper.git
 cd Prompt_helper
 pip install -r requirements.txt
+
+sudo apt update 
+
+sudo apt install tree –y 
+ollama pull qwen2.5:7b 
+
+ 
+
+## Changement config :  
+
+{ 
+
+  "project_root": "/data/mdejurquet/mon_projet" 
+
+} 
+
+ 
+
+sudo chown -R mdejurquet:mdejurquet /data/mdejurquet/model_ia 
+
+Si le projet n'a pas de documentation (summary, dependancies, arborescences..) initialisé avec : python3 scripts/init_target_project.py 
+
+python3 back/server.py  
+
+ 
+
+## SSH  
+
+En local :  
+ssh -N -L 9010:127.0.0.1:8010 mdejurquet@obtic-gpu1 
+
+Page :  
+
+http://127.0.0.1:9010/
+
+##  créer/relancer les fichiers d'informaiton pour le rag 
+
+python rag/build_index.py
+
+
+##  lancer le chat :  
+
+python rag/query.py 
+python rag/ask.py 
