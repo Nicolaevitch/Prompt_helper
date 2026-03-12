@@ -5,16 +5,9 @@ from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FRONT_DIR = os.path.join(PROJECT_DIR, "front")
-
-TREE_FILE = os.path.join(PROJECT_DIR, "arborescence.txt")
-
-BLOCKS_JSON = os.path.join(PROJECT_DIR, "blocks_summary.json")
-BLOCKS_TXT = os.path.join(PROJECT_DIR, "blocks_summary.txt")
-
-DEPS_JSON = os.path.join(PROJECT_DIR, "block_dependencies.json")
-DEPS_TXT = os.path.join(PROJECT_DIR, "block_dependencies.txt")
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONT_DIR = os.path.join(APP_DIR, "front")
+CONFIG_FILE = os.path.join(APP_DIR, "config", "project_config.json")
 
 HOST = "127.0.0.1"
 PORT = 8010
@@ -22,6 +15,37 @@ PORT = 8010
 
 def now_utc_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
+
+
+def load_project_root() -> str:
+    if not os.path.exists(CONFIG_FILE):
+        raise FileNotFoundError(f"Config introuvable : {CONFIG_FILE}")
+
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    project_root = data.get("project_root", "").strip()
+
+    if not project_root:
+        raise ValueError("project_root est vide dans project_config.json")
+
+    if not os.path.isdir(project_root):
+        raise NotADirectoryError(f"project_root invalide : {project_root}")
+
+    return project_root
+
+
+def get_project_paths() -> dict:
+    project_root = load_project_root()
+    return {
+        "project_root": project_root,
+        "tree_file": os.path.join(project_root, "arborescence.txt"),
+        "blocks_json": os.path.join(project_root, "blocks_summary.json"),
+        "blocks_txt": os.path.join(project_root, "blocks_summary.txt"),
+        "deps_json": os.path.join(project_root, "block_dependencies.json"),
+        "deps_txt": os.path.join(project_root, "block_dependencies.txt"),
+        "project_summary": os.path.join(project_root, "project_summary.md"),
+    }
 
 
 def build_blocks_text_summary(payload: dict) -> str:
@@ -39,6 +63,7 @@ def build_blocks_text_summary(payload: dict) -> str:
         lines.append(f"=== Bloc {idx} ===")
         lines.append(f"ID : {block.get('id', '')}")
         lines.append(f"Nom : {block.get('name', '')}")
+        lines.append(f"Type : {block.get('type', 'block')}")
         lines.append(f"Création : {block.get('created_at', '')}")
         lines.append(f"Niveau le plus haut : {block.get('highest_level', '-')}")
         lines.append(f"Contexte : {block.get('context', '')}")
@@ -115,9 +140,20 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _read_json_body(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        raw_body = self.rfile.read(content_length)
+        if not raw_body:
+            return {}
+        return json.loads(raw_body.decode("utf-8"))
+
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path == "/api/project-config":
+            self.handle_get_project_config()
+            return
 
         if path == "/api/tree":
             self.handle_get_tree()
@@ -141,6 +177,10 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        if path == "/api/project-config":
+            self.handle_set_project_config()
+            return
+
         if path == "/api/save-blocks":
             self.handle_save_blocks()
             return
@@ -151,13 +191,43 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
         self.send_json(404, {"ok": False, "error": "Route inconnue"})
 
-    def handle_get_tree(self):
+    def handle_get_project_config(self):
         try:
-            if not os.path.exists(TREE_FILE):
-                self.send_json(404, {"ok": False, "error": "arborescence.txt introuvable"})
+            project_root = load_project_root()
+            self.send_json(200, {"ok": True, "project_root": project_root})
+        except Exception as e:
+            self.send_json(500, {"ok": False, "error": str(e)})
+
+    def handle_set_project_config(self):
+        try:
+            payload = self._read_json_body()
+            project_root = payload.get("project_root", "").strip()
+
+            if not project_root:
+                self.send_json(400, {"ok": False, "error": "project_root vide"})
                 return
 
-            with open(TREE_FILE, "r", encoding="utf-8") as f:
+            if not os.path.isdir(project_root):
+                self.send_json(400, {"ok": False, "error": f"Dossier introuvable : {project_root}"})
+                return
+
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump({"project_root": project_root}, f, ensure_ascii=False, indent=2)
+
+            self.send_json(200, {"ok": True, "project_root": project_root})
+        except Exception as e:
+            self.send_json(500, {"ok": False, "error": str(e)})
+
+    def handle_get_tree(self):
+        try:
+            paths = get_project_paths()
+            tree_file = paths["tree_file"]
+
+            if not os.path.exists(tree_file):
+                self.send_json(404, {"ok": False, "error": f"arborescence.txt introuvable dans {paths['project_root']}"})
+                return
+
+            with open(tree_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
 
             self.send_json(
@@ -165,7 +235,8 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                 {
                     "ok": True,
                     "tree_text": content,
-                    "tree_file": TREE_FILE,
+                    "tree_file": tree_file,
+                    "project_root": paths["project_root"],
                 },
             )
         except Exception as e:
@@ -173,7 +244,10 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
     def handle_get_blocks(self):
         try:
-            if not os.path.exists(BLOCKS_JSON):
+            paths = get_project_paths()
+            blocks_json = paths["blocks_json"]
+
+            if not os.path.exists(blocks_json):
                 payload = default_blocks_payload()
                 self.send_json(
                     200,
@@ -181,12 +255,13 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                         "ok": True,
                         "exists": False,
                         "data": payload,
-                        "blocks_file": BLOCKS_JSON,
+                        "blocks_file": blocks_json,
+                        "project_root": paths["project_root"],
                     },
                 )
                 return
 
-            with open(BLOCKS_JSON, "r", encoding="utf-8") as f:
+            with open(blocks_json, "r", encoding="utf-8") as f:
                 content = json.load(f)
 
             self.send_json(
@@ -195,7 +270,8 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                     "ok": True,
                     "exists": True,
                     "data": content,
-                    "blocks_file": BLOCKS_JSON,
+                    "blocks_file": blocks_json,
+                    "project_root": paths["project_root"],
                 },
             )
         except Exception as e:
@@ -203,7 +279,10 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
     def handle_get_dependencies(self):
         try:
-            if not os.path.exists(DEPS_JSON):
+            paths = get_project_paths()
+            deps_json = paths["deps_json"]
+
+            if not os.path.exists(deps_json):
                 payload = default_dependencies_payload()
                 self.send_json(
                     200,
@@ -211,12 +290,13 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                         "ok": True,
                         "exists": False,
                         "data": payload,
-                        "dependencies_file": DEPS_JSON,
+                        "dependencies_file": deps_json,
+                        "project_root": paths["project_root"],
                     },
                 )
                 return
 
-            with open(DEPS_JSON, "r", encoding="utf-8") as f:
+            with open(deps_json, "r", encoding="utf-8") as f:
                 content = json.load(f)
 
             self.send_json(
@@ -225,7 +305,8 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                     "ok": True,
                     "exists": True,
                     "data": content,
-                    "dependencies_file": DEPS_JSON,
+                    "dependencies_file": deps_json,
+                    "project_root": paths["project_root"],
                 },
             )
         except Exception as e:
@@ -233,16 +314,15 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
     def handle_save_blocks(self):
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            raw_body = self.rfile.read(content_length)
-            payload = json.loads(raw_body.decode("utf-8"))
+            payload = self._read_json_body()
+            paths = get_project_paths()
 
             payload["saved_at"] = now_utc_iso()
 
-            with open(BLOCKS_JSON, "w", encoding="utf-8") as f:
+            with open(paths["blocks_json"], "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
-            with open(BLOCKS_TXT, "w", encoding="utf-8") as f:
+            with open(paths["blocks_txt"], "w", encoding="utf-8") as f:
                 f.write(build_blocks_text_summary(payload))
 
             self.send_json(
@@ -250,8 +330,9 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                 {
                     "ok": True,
                     "message": "Blocs enregistrés sur le serveur",
-                    "json_file": BLOCKS_JSON,
-                    "txt_file": BLOCKS_TXT,
+                    "json_file": paths["blocks_json"],
+                    "txt_file": paths["blocks_txt"],
+                    "project_root": paths["project_root"],
                 },
             )
         except Exception as e:
@@ -259,16 +340,15 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
     def handle_save_dependencies(self):
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-            raw_body = self.rfile.read(content_length)
-            payload = json.loads(raw_body.decode("utf-8"))
+            payload = self._read_json_body()
+            paths = get_project_paths()
 
             payload["saved_at"] = now_utc_iso()
 
-            with open(DEPS_JSON, "w", encoding="utf-8") as f:
+            with open(paths["deps_json"], "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
 
-            with open(DEPS_TXT, "w", encoding="utf-8") as f:
+            with open(paths["deps_txt"], "w", encoding="utf-8") as f:
                 f.write(build_dependencies_text_summary(payload))
 
             self.send_json(
@@ -276,8 +356,9 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
                 {
                     "ok": True,
                     "message": "Dépendances enregistrées sur le serveur",
-                    "json_file": DEPS_JSON,
-                    "txt_file": DEPS_TXT,
+                    "json_file": paths["deps_json"],
+                    "txt_file": paths["deps_txt"],
+                    "project_root": paths["project_root"],
                 },
             )
         except Exception as e:
@@ -285,12 +366,18 @@ class PromptHelperHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    os.chdir(PROJECT_DIR)
     server = ThreadingHTTPServer((HOST, PORT), PromptHelperHandler)
     print(f"Serveur lancé sur http://{HOST}:{PORT}")
-    print(f"Projet : {PROJECT_DIR}")
+    print(f"App : {APP_DIR}")
     print(f"Front servi depuis : {FRONT_DIR}")
-    print(f"Arborescence lue depuis : {TREE_FILE}")
-    print(f"Blocs JSON : {BLOCKS_JSON}")
-    print(f"Dépendances JSON : {DEPS_JSON}")
+
+    try:
+        paths = get_project_paths()
+        print(f"Projet cible : {paths['project_root']}")
+        print(f"Arborescence lue depuis : {paths['tree_file']}")
+        print(f"Blocs JSON : {paths['blocks_json']}")
+        print(f"Dépendances JSON : {paths['deps_json']}")
+    except Exception as e:
+        print(f"[WARN] Impossible de charger la config projet : {e}")
+
     server.serve_forever()
