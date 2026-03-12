@@ -3,13 +3,19 @@ import json
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 
-PROJECT_ROOT = Path("/data/mdejurquet/test_prompt_helper")
+APP_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = APP_ROOT / "config" / "project_config.json"
+
+with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+PROJECT_ROOT = Path(config["project_root"]).resolve()
 
 BLOCKS_FILE = PROJECT_ROOT / "blocks_summary.json"
 DEPENDENCIES_FILE = PROJECT_ROOT / "block_dependencies.json"
 SUMMARY_FILE = PROJECT_ROOT / "project_summary.md"
 
-RAG_DIR = PROJECT_ROOT / "rag"
+RAG_DIR = APP_ROOT / "rag"
 OUTPUT_DOCS = RAG_DIR / "documents.json"
 OUTPUT_EMB = RAG_DIR / "embeddings" / "embeddings.json"
 
@@ -25,7 +31,6 @@ EXCLUDED_DIRS = {
     "embeddings",
 }
 
-# Fichiers utiles à chunker comme "code" / contenu technique
 ALLOWED_CODE_EXTENSIONS = {
     ".py",
     ".js",
@@ -37,7 +42,6 @@ ALLOWED_CODE_EXTENSIONS = {
     ".md",
 }
 
-# Fichiers à ne PAS chunker comme code, même si extension autorisée
 EXCLUDED_FILES_FOR_CODE_INDEX = {
     "project_summary.md",
     "blocks_summary.json",
@@ -121,7 +125,6 @@ def enrich_folder_blocks_with_real_files(block_to_files: dict, file_to_blocks: d
         for path in paths:
             expanded_paths.add(path)
 
-            # si c'est un dossier logique (pas d'extension)
             if not Path(path).suffix:
                 prefix = path.rstrip("/") + "/"
                 for project_file in all_project_files:
@@ -143,7 +146,7 @@ def load_project_summary():
         "doc_type": "project_summary",
         "title": "Résumé global du projet",
         "text": text,
-        "source_path": str(SUMMARY_FILE.name),
+        "source_path": str(SUMMARY_FILE),
     })
 
 
@@ -265,10 +268,6 @@ def load_code(file_to_blocks: dict):
 
             rel_path = normalize_path(path)
 
-            # sécurité supplémentaire
-            if rel_path.startswith("./rag/embeddings"):
-                continue
-
             chunks = chunk_code(path)
             if not chunks:
                 continue
@@ -317,6 +316,8 @@ def build_embeddings():
 
 
 def main():
+    print(f"Prompt Helper app root : {APP_ROOT}")
+    print(f"Projet cible indexé    : {PROJECT_ROOT}")
     print("Loading source files...")
 
     blocks_data = load_json(BLOCKS_FILE)
@@ -344,6 +345,8 @@ def main():
     build_embeddings()
 
     print("Done")
+    print(f"Documents saved to  : {OUTPUT_DOCS}")
+    print(f"Embeddings saved to : {OUTPUT_EMB}")
 
 
 if __name__ == "__main__":

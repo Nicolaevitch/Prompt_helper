@@ -1,13 +1,23 @@
+import json
+from pathlib import Path
 import ollama
 from query import search
+
+APP_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = APP_ROOT / "config" / "project_config.json"
+
+with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+PROJECT_ROOT = Path(config["project_root"]).resolve()
 
 MODEL = "qwen2.5:7b"
 
 
-def build_context(results):
+def build_context(results, max_docs=6):
     context_parts = []
 
-    for score, doc in results:
+    for score, doc in results[:max_docs]:
         text = doc["text"]
 
         block = f"""
@@ -70,6 +80,9 @@ Consignes de réponse :
 - Sois clair, structuré, précis et concis.
 - Réponds en français.
 
+Projet analysé :
+{PROJECT_ROOT}
+
 Question :
 {question}
 
@@ -93,6 +106,8 @@ def ask_llm(question, context):
 
 def main():
     print("\nRAG + LLM prêt.\n")
+    print(f"Projet cible : {PROJECT_ROOT}")
+    print(f"Modèle LLM   : {MODEL}\n")
 
     while True:
         question = input("> ")
@@ -103,13 +118,15 @@ def main():
         results, debug = search(question)
 
         print("\nAnalyse requête :")
-        print("intent             :", debug["intent"])
-        print("file_terms         :", debug["file_terms"])
-        print("matched_file_paths :", debug["matched_file_paths"])
-        print("seed_blocks        :", debug["seed_blocks"])
+        print("project_root       :", debug.get("project_root"))
+        print("docs_file          :", debug.get("docs_file"))
+        print("emb_file           :", debug.get("emb_file"))
+        print("intent             :", debug.get("intent"))
+        print("file_terms         :", debug.get("file_terms"))
+        print("matched_file_paths :", debug.get("matched_file_paths"))
+        print("seed_blocks        :", debug.get("seed_blocks"))
 
         context = build_context(results)
-
         answer = ask_llm(question, context)
 
         print("\nRéponse :\n")
@@ -119,4 +136,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
