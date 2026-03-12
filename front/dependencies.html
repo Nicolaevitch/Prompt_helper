@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dépendances entre blocs</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #111827;
+      --soft: #eef2ff;
+      --danger: #b91c1c;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1850px;
+      margin: 24px auto;
+      padding: 0 16px 40px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 8px; }
+    h2 { font-size: 20px; margin-bottom: 12px; }
+    h3 { font-size: 16px; margin-bottom: 10px; }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .nav-link,
+    button {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      border: 0;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #4b5563;
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .block-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .block-chip {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .block-chip:hover {
+      background: #f3f4f6;
+    }
+
+    .block-chip.active {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+    }
+
+    .block-chip-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .block-chip-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .workspace {
+      min-height: 72vh;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      background: linear-gradient(180deg, #fcfcfd, #f9fafb);
+      padding: 18px;
+    }
+
+    .workspace-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .control-panel {
+      margin-bottom: 18px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fafafa;
+    }
+
+    .control-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    select {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      font-size: 14px;
+      min-width: 260px;
+    }
+
+    .tree-zone {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      align-items: flex-start;
+    }
+
+    .tree-root-box {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+    }
+
+    .tree-level {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      position: relative;
+      padding-left: 28px;
+      border-left: 2px dashed #d1d5db;
+      margin-left: 12px;
+    }
+
+    .dep-card {
+      min-width: 240px;
+      max-width: 340px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+      padding: 14px;
+    }
+
+    .dep-card.selected {
+      outline: 2px solid #818cf8;
+      background: #eef2ff;
+    }
+
+    .dep-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .dep-id {
+      display: inline-block;
+      margin-bottom: 8px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .dep-meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .dep-section {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .dep-section b {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .dep-list {
+      margin: 0;
+      padding-left: 16px;
+      color: var(--muted);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+      margin-top: 10px;
+    }
+
+    .empty {
+      padding: 18px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: #fafafa;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="topbar">
+        <div>
+          <h1>Dépendances entre blocs</h1>
+          <p>
+            Cette page gère les <b>dépendances fonctionnelles / chronologiques</b> entre blocs. La hiérarchie de contenu reste séparée.
+          </p>
+        </div>
+        <div class="nav-actions">
+          <a href="/index.html" class="nav-link">Retour à la page blocs</a>
+          <button id="reloadBtn" class="secondary">Recharger</button>
+          <button id="showAllBtn" class="secondary">Tout afficher</button>
+          <button id="saveBtn" class="secondary">Sauvegarder les dépendances</button>
+        </div>
+      </div>
+      <div id="status" class="muted" style="margin-top:10px;"></div>
+      <div id="error" class="error"></div>
+    </div>
+
+    <div class="layout">
+      <div class="sidebar">
+        <div class="card">
+          <h2>Blocs libres</h2>
+          <p class="muted" style="margin-bottom:12px;">
+            Blocs sans dépendance créée.
+          </p>
+          <div id="freeBlocksList" class="block-list"></div>
+        </div>
+
+        <div class="card">
+          <h2>Blocs ajoutés</h2>
+          <p class="muted" style="margin-bottom:12px;">
+            Blocs ayant au moins une dépendance entrante ou sortante.
+          </p>
+          <div id="addedBlocksList" class="block-list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="workspace">
+          <div class="workspace-header">
+            <div>
+              <h2>Visualisation des dépendances</h2>
+              <p id="workspaceLabel" class="muted">Affichage global des racines de dépendance.</p>
+            </div>
+          </div>
+
+          <div class="control-panel">
+            <h3>Créer une dépendance</h3>
+            <p class="muted">
+              Le bloc de gauche doit être réalisé / compris <b>avant</b> le bloc de droite.
+            </p>
+            <div class="control-row">
+              <select id="fromBlockSelect">
+                <option value="">Bloc précédent</option>
+              </select>
+              <select id="toBlockSelect">
+                <option value="">Bloc suivant</option>
+              </select>
+              <button id="addDependencyBtn">Ajouter la dépendance</button>
+            </div>
+          </div>
+
+          <div id="treeZone" class="tree-zone"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const reloadBtn = document.getElementById('reloadBtn');
+    const showAllBtn = document.getElementById('showAllBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const freeBlocksList = document.getElementById('freeBlocksList');
+    const addedBlocksList = document.getElementById('addedBlocksList');
+    const treeZone = document.getElementById('treeZone');
+    const workspaceLabel = document.getElementById('workspaceLabel');
+    const fromBlockSelect = document.getElementById('fromBlockSelect');
+    const toBlockSelect = document.getElementById('toBlockSelect');
+    const addDependencyBtn = document.getElementById('addDependencyBtn');
+
+    let blocksPayload = null;
+    let dependenciesPayload = null;
+    let blocks = [];
+    let blocksById = {};
+    let dependencies = [];
+    let selectedBlockId = null;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadAll();
+    });
+
+    reloadBtn.addEventListener('click', loadAll);
+
+    showAllBtn.addEventListener('click', () => {
+      selectedBlockId = null;
+      renderSidebar();
+      renderWorkspace();
+    });
+
+    addDependencyBtn.addEventListener('click', () => {
+      const fromId = fromBlockSelect.value;
+      const toId = toBlockSelect.value;
+
+      if (!fromId || !toId) {
+        statusEl.textContent = 'Choisis les deux blocs.';
+        return;
+      }
+
+      if (fromId === toId) {
+        statusEl.textContent = 'Un bloc ne peut pas dépendre de lui-même.';
+        return;
+      }
+
+      if (createsDependencyCycle(fromId, toId)) {
+        statusEl.textContent = 'Relation refusée : elle créerait une boucle de dépendance.';
+        return;
+      }
+
+      if (dependencies.some(dep => dep.from_block_id === fromId && dep.to_block_id === toId)) {
+        statusEl.textContent = 'Cette dépendance existe déjà.';
+        return;
+      }
+
+      dependencies.push({
+        from_block_id: fromId,
+        to_block_id: toId,
+        created_at: new Date().toISOString()
+      });
+
+      rebuildDependencyIndexes();
+      renderSidebar();
+      renderWorkspace();
+      statusEl.textContent = `Dépendance ajoutée : ${blocksById[fromId]?.name || fromId} → ${blocksById[toId]?.name || toId}`;
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      await saveDependencies();
+    });
+
+    async function loadAll() {
+      errorEl.textContent = '';
+      statusEl.textContent = 'Chargement des blocs et dépendances...';
+
+      try {
+        const [blocksRes, depsRes] = await Promise.all([
+          fetch('/api/blocks', { cache: 'no-store' }),
+          fetch('/api/dependencies', { cache: 'no-store' })
+        ]);
+
+        const blocksJson = await blocksRes.json();
+        const depsJson = await depsRes.json();
+
+        if (!blocksRes.ok || !blocksJson.ok) {
+          throw new Error(blocksJson.error || `HTTP ${blocksRes.status}`);
+        }
+
+        if (!depsRes.ok || !depsJson.ok) {
+          throw new Error(depsJson.error || `HTTP ${depsRes.status}`);
+        }
+
+        blocksPayload = blocksJson.data || {
+          generated_at: new Date().toISOString(),
+          source_tree_root: null,
+          current_view_path: null,
+          depth_setting: 1,
+          blocks: []
+        };
+
+        dependenciesPayload = depsJson.data || {
+          generated_at: new Date().toISOString(),
+          dependencies: []
+        };
+
+        blocks = Array.isArray(blocksPayload.blocks) ? blocksPayload.blocks : [];
+        blocksById = Object.fromEntries(blocks.map(block => [block.id, block]));
+        dependencies = Array.isArray(dependenciesPayload.dependencies) ? dependenciesPayload.dependencies : [];
+
+        normalizeBlocks();
+        rebuildDependencyIndexes();
+
+        statusEl.textContent = `${blocks.length} bloc(s) et ${dependencies.length} dépendance(s) chargés.`;
+        renderDependencySelects();
+        renderSidebar();
+        renderWorkspace();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '';
+        errorEl.textContent = `Erreur de chargement : ${err.message}`;
+        blocksPayload = null;
+        dependenciesPayload = null;
+        blocks = [];
+        blocksById = {};
+        dependencies = [];
+        renderDependencySelects();
+        renderSidebar();
+        renderWorkspace();
+      }
+    }
+
+    function normalizeBlocks() {
+      for (const block of blocks) {
+        if (!Array.isArray(block.child_block_ids)) block.child_block_ids = [];
+        if (!Array.isArray(block.parent_block_ids)) block.parent_block_ids = [];
+        if (!Array.isArray(block.items)) block.items = [];
+        block.depends_on_block_ids = [];
+        block.depended_by_block_ids = [];
+      }
+    }
+
+    function rebuildDependencyIndexes() {
+      for (const block of blocks) {
+        block.depends_on_block_ids = [];
+        block.depended_by_block_ids = [];
+      }
+
+      for (const dep of dependencies) {
+        const fromBlock = blocksById[dep.from_block_id];
+        const toBlock = blocksById[dep.to_block_id];
+        if (!fromBlock || !toBlock) continue;
+
+        if (!fromBlock.depended_by_block_ids.includes(dep.to_block_id)) {
+          fromBlock.depended_by_block_ids.push(dep.to_block_id);
+        }
+
+        if (!toBlock.depends_on_block_ids.includes(dep.from_block_id)) {
+          toBlock.depends_on_block_ids.push(dep.from_block_id);
+        }
+      }
+    }
+
+    function getFreeBlocks() {
+      return blocks.filter(block =>
+        !(block.depends_on_block_ids || []).length &&
+        !(block.depended_by_block_ids || []).length
+      );
+    }
+
+    function getAddedBlocks() {
+      return blocks.filter(block =>
+        (block.depends_on_block_ids || []).length ||
+        (block.depended_by_block_ids || []).length
+      );
+    }
+
+    function getDependencyRoots() {
+      return blocks.filter(block => !(block.depends_on_block_ids || []).length);
+    }
+
+    function renderSidebar() {
+      renderBlockList(freeBlocksList, getFreeBlocks(), 'Aucun bloc libre.');
+      renderBlockList(addedBlocksList, getAddedBlocks(), 'Aucune dépendance créée.');
+    }
+
+    function renderBlockList(container, data, emptyMessage) {
+      container.innerHTML = '';
+
+      if (!data.length) {
+        container.innerHTML = `<div class="empty">${emptyMessage}</div>`;
+        return;
+      }
+
+      for (const block of data) {
+        const div = document.createElement('div');
+        div.className = 'block-chip' + (block.id === selectedBlockId ? ' active' : '');
+        div.innerHTML = `
+          <div class="block-chip-title">${escapeHtml(block.name || '(sans nom)')}</div>
+          <div class="block-chip-meta">${escapeHtml(block.id)}</div>
+          <div class="block-chip-meta">avant: ${(block.depends_on_block_ids || []).length} · après: ${(block.depended_by_block_ids || []).length}</div>
+        `;
+        div.addEventListener('click', () => {
+          selectedBlockId = block.id;
+          renderSidebar();
+          renderWorkspace();
+        });
+        container.appendChild(div);
+      }
+    }
+
+    function renderDependencySelects() {
+      const currentFrom = fromBlockSelect.value;
+      const currentTo = toBlockSelect.value;
+
+      fromBlockSelect.innerHTML = '<option value="">Bloc précédent</option>';
+      toBlockSelect.innerHTML = '<option value="">Bloc suivant</option>';
+
+      for (const block of blocks) {
+        const option1 = document.createElement('option');
+        option1.value = block.id;
+        option1.textContent = `${block.name} [${block.id}]`;
+        fromBlockSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = block.id;
+        option2.textContent = `${block.name} [${block.id}]`;
+        toBlockSelect.appendChild(option2);
+      }
+
+      if (blocks.some(b => b.id === currentFrom)) fromBlockSelect.value = currentFrom;
+      if (blocks.some(b => b.id === currentTo)) toBlockSelect.value = currentTo;
+    }
+
+    function renderWorkspace() {
+      treeZone.innerHTML = '';
+
+      if (!blocks.length) {
+        treeZone.innerHTML = '<div class="empty">Aucun bloc disponible.</div>';
+        workspaceLabel.textContent = 'Aucune donnée.';
+        return;
+      }
+
+      if (selectedBlockId) {
+        const selectedBlock = blocksById[selectedBlockId];
+        workspaceLabel.textContent = selectedBlock
+          ? `Affichage centré sur : ${selectedBlock.name} [${selectedBlock.id}]`
+          : 'Bloc introuvable.';
+
+        if (!selectedBlock) {
+          treeZone.innerHTML = '<div class="empty">Bloc introuvable.</div>';
+          return;
+        }
+
+        const tree = buildDependencyTree(selectedBlock.id, new Set());
+        treeZone.appendChild(renderDependencyNode(tree));
+        return;
+      }
+
+      workspaceLabel.textContent = 'Affichage global des racines de dépendance.';
+      const roots = getDependencyRoots();
+
+      if (!roots.length) {
+        treeZone.innerHTML = '<div class="empty">Aucune racine de dépendance détectée. Il existe peut-être une boucle.</div>';
+        return;
+      }
+
+      for (const root of roots) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tree-root-box';
+        const tree = buildDependencyTree(root.id, new Set());
+        wrapper.appendChild(renderDependencyNode(tree));
+        treeZone.appendChild(wrapper);
+      }
+    }
+
+    function buildDependencyTree(blockId, visited) {
+      const block = blocksById[blockId];
+      if (!block) {
+        return {
+          missing: true,
+          id: blockId,
+          children: []
+        };
+      }
+
+      if (visited.has(blockId)) {
+        return {
+          cycle: true,
+          block,
+          children: []
+        };
+      }
+
+      const nextVisited = new Set(visited);
+      nextVisited.add(blockId);
+
+      return {
+        block,
+        children: (block.depended_by_block_ids || []).map(childId =>
+          buildDependencyTree(childId, nextVisited)
+        )
+      };
+    }
+
+    function renderDependencyNode(node) {
+      const container = document.createElement('div');
+
+      if (node.missing) {
+        container.className = 'dep-card';
+        container.innerHTML = `
+          <div class="dep-title">Bloc introuvable</div>
+          <div class="dep-id">${escapeHtml(node.id)}</div>
+        `;
+        return container;
+      }
+
+      if (node.cycle) {
+        container.className = 'dep-card';
+        container.innerHTML = `
+          <div class="dep-title">Boucle détectée</div>
+          <div class="dep-id">${escapeHtml(node.block.id)}</div>
+          <div class="dep-meta">Ce bloc réapparaît dans la chaîne de dépendance.</div>
+        `;
+        return container;
+      }
+
+      const block = node.block;
+
+      const card = document.createElement('div');
+      card.className = 'dep-card' + (block.id === selectedBlockId ? ' selected' : '');
+
+      const prevNames = (block.depends_on_block_ids || []).map(id => {
+        const b = blocksById[id];
+        return b ? `${b.name} [${b.id}]` : id;
+      });
+
+      const nextNames = (block.depended_by_block_ids || []).map(id => {
+        const b = blocksById[id];
+        return b ? `${b.name} [${b.id}]` : id;
+      });
+
+      const itemsPreview = (block.items || []).slice(0, 5).map(item =>
+        `<li>${escapeHtml(item.name)} <span class="muted">(${escapeHtml(item.type)})</span></li>`
+      ).join('');
+
+      card.innerHTML = `
+        <div class="dep-title">${escapeHtml(block.name || '(sans nom)')}</div>
+        <div class="dep-id">${escapeHtml(block.id)}</div>
+        <div class="dep-meta">${escapeHtml(block.context || '(pas de contexte)')}</div>
+
+        <div class="dep-section">
+          <b>Avant</b>
+          <div class="muted">${escapeHtml(prevNames.length ? prevNames.join(', ') : '(aucun)')}</div>
+        </div>
+
+        <div class="dep-section">
+          <b>Après</b>
+          <div class="muted">${escapeHtml(nextNames.length ? nextNames.join(', ') : '(aucun)')}</div>
+        </div>
+
+        <div class="dep-section">
+          <b>Items</b>
+          ${
+            itemsPreview
+              ? `<ul class="dep-list">${itemsPreview}</ul>`
+              : `<div class="muted">(aucun item)</div>`
+          }
+        </div>
+
+        <div class="dep-section">
+          <button class="danger" data-remove-selected="${escapeHtml(block.id)}">Supprimer les dépendances de ce bloc</button>
+        </div>
+      `;
+
+      card.addEventListener('click', (event) => {
+        const target = event.target;
+        if (target && target.hasAttribute('data-remove-selected')) return;
+        selectedBlockId = block.id;
+        renderSidebar();
+        renderWorkspace();
+      });
+
+      const removeBtn = card.querySelector('[data-remove-selected]');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          removeAllDependenciesForBlock(block.id);
+        });
+      }
+
+      container.appendChild(card);
+
+      if (node.children.length) {
+        const childrenBox = document.createElement('div');
+        childrenBox.className = 'tree-level';
+
+        for (const childNode of node.children) {
+          childrenBox.appendChild(renderDependencyNode(childNode));
+        }
+
+        container.appendChild(childrenBox);
+      }
+
+      return container;
+    }
+
+    function removeAllDependenciesForBlock(blockId) {
+      dependencies = dependencies.filter(
+        dep => dep.from_block_id !== blockId && dep.to_block_id !== blockId
+      );
+
+      rebuildDependencyIndexes();
+      statusEl.textContent = `Toutes les dépendances du bloc ${blocksById[blockId]?.name || blockId} ont été supprimées.`;
+      renderSidebar();
+      renderWorkspace();
+    }
+
+    function createsDependencyCycle(fromId, toId) {
+      return hasPath(toId, fromId, new Set());
+    }
+
+    function hasPath(startId, targetId, visited) {
+      if (startId === targetId) return true;
+      if (visited.has(startId)) return false;
+
+      visited.add(startId);
+      const block = blocksById[startId];
+      if (!block) return false;
+
+      for (const nextId of (block.depended_by_block_ids || [])) {
+        if (hasPath(nextId, targetId, visited)) return true;
+      }
+
+      return false;
+    }
+
+    async function saveDependencies() {
+      try {
+        if (!dependenciesPayload) {
+          dependenciesPayload = {
+            generated_at: new Date().toISOString(),
+            dependencies: []
+          };
+        }
+
+        dependenciesPayload.generated_at = new Date().toISOString();
+        dependenciesPayload.dependencies = dependencies;
+
+        const response = await fetch('/api/save-dependencies', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(dependenciesPayload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        statusEl.textContent = 'Dépendances enregistrées sur le serveur.';
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = `Erreur de sauvegarde : ${err.message}`;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

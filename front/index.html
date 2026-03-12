@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visualiseur d'arborescence + blocs</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --folder: #b7791f;
+      --file: #2563eb;
+      --accent: #111827;
+      --soft: #eef2ff;
+      --soft-border: #c7d2fe;
+      --danger: #b91c1c;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1700px;
+      margin: 24px auto;
+      padding: 0 16px 40px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 8px; }
+    h2 { font-size: 22px; margin-bottom: 14px; }
+    h3 { font-size: 16px; margin-bottom: 10px; }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    button, .nav-link {
+      padding: 10px 14px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, .nav-link:hover { opacity: 0.93; }
+    button.secondary { background: #4b5563; }
+    button.danger { background: var(--danger); }
+    button.small-btn { padding: 6px 10px; font-size: 12px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid var(--soft-border);
+    }
+
+    .hint {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+      margin-top: 12px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(520px, 1.4fr) minmax(380px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel-sticky {
+      position: sticky;
+      top: 14px;
+    }
+
+    .tree-toolbar, .blocks-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .tree-nav, .blocks-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tree-container {
+      overflow: auto;
+      max-height: 75vh;
+      padding: 8px 4px;
+      border: 1px solid #edf0f4;
+      border-radius: 14px;
+      background: #fcfcfd;
+    }
+
+    .tree-root {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .tree-root ul,
+    .block-tree ul {
+      list-style: none;
+      margin: 0;
+      padding-left: 24px;
+      border-left: 1px dashed #d6d6d6;
+    }
+
+    .node {
+      margin: 6px 0;
+      position: relative;
+    }
+
+    .node-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      white-space: nowrap;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .node-line:hover { background: #f3f4f6; }
+    .node-line.selected { background: #e0e7ff; outline: 1px solid #a5b4fc; }
+
+    .icon {
+      width: 18px;
+      text-align: center;
+      flex: 0 0 18px;
+    }
+
+    .folder .icon { color: var(--folder); }
+    .file .icon { color: var(--file); }
+
+    .node-name {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 14px;
+    }
+
+    .muted { color: var(--muted); }
+    .small { font-size: 13px; }
+
+    .selection-box {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fafafa;
+    }
+
+    .selection-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .blocks-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 70vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .block-list-item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fcfcfd;
+      padding: 14px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .block-list-item:hover {
+      background: #f8fafc;
+      border-color: #bfc7d4;
+    }
+
+    .block-list-item.selected {
+      background: #e0e7ff;
+      border-color: #a5b4fc;
+      outline: 1px solid #a5b4fc;
+    }
+
+    .block-list-title {
+      font-weight: 700;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .block-id {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .block-list-meta {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .block-detail-empty {
+      padding: 18px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      background: #fafafa;
+    }
+
+    .block-detail-content {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .block-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .block-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .block-info {
+      display: grid;
+      gap: 6px;
+      margin: 10px 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .block-tree {
+      border: 1px solid #edf0f4;
+      border-radius: 12px;
+      background: #fcfcfd;
+      padding: 10px;
+      overflow: auto;
+      max-height: 420px;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      background: #fafafa;
+    }
+
+    .block-items {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 10px 0 12px;
+    }
+
+    .block-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .export-status {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 1fr; }
+      .panel-sticky { position: static; }
+      .blocks-list { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <h1>Visualiseur local d'arborescence + blocs</h1>
+          <p>
+            Double-clique sur un dossier pour naviguer dedans uniquement. Clique simple pour le sélectionner. Puis ajoute librement des fichiers ou dossiers dans les blocs à droite.
+          </p>
+        </div>
+        <div>
+          <a href="/dependencies.html" class="nav-link">Voir la page dépendances</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <div class="field">
+          <label for="depthInput">Profondeur maximale affichée</label>
+          <input id="depthInput" type="number" min="0" value="1" />
+        </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="reloadBtn">Recharger l'arborescence</button>
+        </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="loadBlocksBtn" class="secondary">Recharger les blocs depuis le serveur</button>
+        </div>
+
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="saveBlocksBtn" class="secondary">Sauvegarder les blocs sur le serveur</button>
+        </div>
+      </div>
+
+      <div class="meta" id="meta"></div>
+      <div class="error" id="error"></div>
+
+      <div class="hint">
+        Cette page persiste maintenant les blocs sur le serveur dans <code>blocks_summary.json</code>. Les dépendances fonctionnelles sont gérées séparément sur la page dépendances.
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="tree-toolbar">
+          <div>
+            <h2>Arborescence du projet</h2>
+            <p class="small muted">Vue courante : <span id="currentViewPath">-</span></p>
+          </div>
+          <div class="tree-nav">
+            <button id="backBtn" class="secondary">← Retour</button>
+            <button id="rootBtn" class="secondary">Racine</button>
+          </div>
+        </div>
+
+        <div class="tree-container" id="treeContainer">
+          <div class="muted">Chargement…</div>
+        </div>
+
+        <div class="selection-box">
+          <h3>Sélection courante</h3>
+          <div id="selectionSummary" class="muted small">Aucun élément sélectionné.</div>
+          <div class="selection-row">
+            <select id="blockTargetSelect">
+              <option value="">Choisir un bloc</option>
+            </select>
+            <button id="createBlockBtn">Créer un bloc depuis la sélection</button>
+            <button id="addToBlockBtn" class="secondary" disabled>Ajouter la sélection au bloc choisi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card panel-sticky">
+        <div class="blocks-toolbar">
+          <div>
+            <h2>Blocs</h2>
+            <p class="small">Clique sur un bloc pour afficher son détail dans le panneau du bas.</p>
+          </div>
+          <div class="blocks-actions">
+            <button id="clearBlocksBtn" class="secondary">Vider la liste locale</button>
+          </div>
+        </div>
+
+        <div class="selection-box" style="margin-bottom: 14px;">
+          <h3>Ajouter un bloc dans un autre bloc</h3>
+          <div class="selection-row">
+            <select id="childBlockSelect">
+              <option value="">Bloc enfant</option>
+            </select>
+            <select id="parentBlockSelect">
+              <option value="">Bloc parent</option>
+            </select>
+            <button id="linkBlocksBtn" class="secondary" disabled>Ajouter le bloc enfant dans le bloc parent</button>
+          </div>
+        </div>
+
+        <div id="exportStatus" class="export-status"></div>
+        <div id="blocksList" class="blocks-list"></div>
+      </div>
+    </div>
+
+    <div class="card" id="blockDetailCard">
+      <div class="tree-toolbar">
+        <div>
+          <h2>Détail du bloc sélectionné</h2>
+          <p class="small muted">Le bloc cliqué dans la liste de droite s’affiche ici.</p>
+        </div>
+      </div>
+      <div id="blockDetailContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    const depthInput = document.getElementById('depthInput');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const loadBlocksBtn = document.getElementById('loadBlocksBtn');
+    const saveBlocksBtn = document.getElementById('saveBlocksBtn');
+
+    const treeContainer = document.getElementById('treeContainer');
+    const meta = document.getElementById('meta');
+    const errorBox = document.getElementById('error');
+    const selectionSummary = document.getElementById('selectionSummary');
+    const blocksList = document.getElementById('blocksList');
+    const clearBlocksBtn = document.getElementById('clearBlocksBtn');
+    const backBtn = document.getElementById('backBtn');
+    const rootBtn = document.getElementById('rootBtn');
+    const currentViewPathEl = document.getElementById('currentViewPath');
+    const createBlockBtn = document.getElementById('createBlockBtn');
+    const addToBlockBtn = document.getElementById('addToBlockBtn');
+    const blockTargetSelect = document.getElementById('blockTargetSelect');
+    const exportStatus = document.getElementById('exportStatus');
+    const childBlockSelect = document.getElementById('childBlockSelect');
+    const parentBlockSelect = document.getElementById('parentBlockSelect');
+    const linkBlocksBtn = document.getElementById('linkBlocksBtn');
+    const blockDetailContainer = document.getElementById('blockDetailContainer');
+    const blockDetailCard = document.getElementById('blockDetailCard');
+
+    let currentTree = null;
+    let selectedNodePath = null;
+    let currentViewPath = null;
+    let selectedBlockId = null;
+    let blocksPayload = {
+      generated_at: new Date().toISOString(),
+      source_tree_root: null,
+      current_view_path: null,
+      depth_setting: 1,
+      blocks: []
+    };
+    let blocks = [];
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadBlocksFromServer();
+      await loadTreeFile();
+    });
+
+    reloadBtn.addEventListener('click', loadTreeFile);
+    loadBlocksBtn.addEventListener('click', loadBlocksFromServer);
+    saveBlocksBtn.addEventListener('click', saveBlocksToServer);
+
+    depthInput.addEventListener('input', () => {
+      if (currentTree) {
+        renderTree();
+        updateSelectionUI();
+        renderBlockDetail();
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      if (!currentTree || !currentViewPath) return;
+      const node = findNodeByPath(currentTree, currentViewPath);
+      if (!node || node.path === currentTree.path) return;
+      const parentPath = getParentPath(node.path);
+      currentViewPath = parentPath || currentTree.path;
+      renderTree();
+    });
+
+    rootBtn.addEventListener('click', () => {
+      if (!currentTree) return;
+      currentViewPath = currentTree.path;
+      renderTree();
+    });
+
+    createBlockBtn.addEventListener('click', () => {
+      const node = findNodeByPath(currentTree, selectedNodePath);
+      if (!node) return;
+
+      const block = {
+        id: generateBlockId(),
+        type: 'block',
+        name: node.name,
+        created_at: new Date().toISOString(),
+        highest_level: node.depth,
+        context: '',
+        items: [serializeNodeItem(node)],
+        child_block_ids: [],
+        parent_block_ids: []
+      };
+
+      blocks.unshift(block);
+      selectedBlockId = block.id;
+      syncBlocksPayload();
+      renderBlocks();
+      renderBlockDetail();
+      exportStatus.textContent = `Bloc créé localement : ${block.name}`;
+
+      requestAnimationFrame(() => {
+        blockDetailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
+    addToBlockBtn.addEventListener('click', () => {
+      const blockId = blockTargetSelect.value;
+      const node = findNodeByPath(currentTree, selectedNodePath);
+      if (!blockId || !node) return;
+
+      const block = blocks.find(b => b.id === blockId);
+      if (!block) return;
+
+      const item = serializeNodeItem(node);
+      const exists = block.items.some(existing => existing.path === item.path);
+
+      if (!exists) {
+        block.items.push(item);
+        block.highest_level = block.items.length
+          ? Math.min(...block.items.map(i => i.depth))
+          : null;
+        selectedBlockId = block.id;
+        syncBlocksPayload();
+        renderBlocks();
+        renderBlockDetail();
+        exportStatus.textContent = `Élément ajouté au bloc ${block.name}`;
+      }
+    });
+
+    blockTargetSelect.addEventListener('change', () => {
+      addToBlockBtn.disabled = !(blockTargetSelect.value && selectedNodePath);
+    });
+
+    childBlockSelect.addEventListener('change', updateLinkBlocksButtonState);
+    parentBlockSelect.addEventListener('change', updateLinkBlocksButtonState);
+
+    linkBlocksBtn.addEventListener('click', () => {
+      const childId = childBlockSelect.value;
+      const parentId = parentBlockSelect.value;
+
+      if (!childId || !parentId) return;
+
+      if (childId === parentId) {
+        exportStatus.textContent = 'Un bloc ne peut pas être ajouté dans lui-même.';
+        return;
+      }
+
+      const childBlock = blocks.find(b => b.id === childId);
+      const parentBlock = blocks.find(b => b.id === parentId);
+
+      if (!childBlock || !parentBlock) return;
+
+      if (isDescendantBlock(childId, parentId)) {
+        exportStatus.textContent = 'Relation impossible : cela créerait une boucle hiérarchique.';
+        return;
+      }
+
+      if ((parentBlock.child_block_ids || []).includes(childId)) {
+        exportStatus.textContent = 'Cette relation hiérarchique existe déjà.';
+        return;
+      }
+
+      parentBlock.child_block_ids.push(childId);
+
+      if (!childBlock.parent_block_ids.includes(parentId)) {
+        childBlock.parent_block_ids.push(parentId);
+      }
+
+      selectedBlockId = parentBlock.id;
+      syncBlocksPayload();
+      renderBlocks();
+      renderBlockDetail();
+      exportStatus.textContent = `Le bloc ${childBlock.name} a été ajouté dans le bloc ${parentBlock.name}.`;
+    });
+
+    clearBlocksBtn.addEventListener('click', () => {
+      if (!blocks.length) return;
+      if (!window.confirm('Vider la liste locale des blocs ?')) return;
+      blocks = [];
+      selectedBlockId = null;
+      syncBlocksPayload();
+      renderBlocks();
+      renderBlockDetail();
+      exportStatus.textContent = 'Liste locale vidée. Sauvegarde sur le serveur si tu veux écraser le fichier distant.';
+    });
+
+    async function loadTreeFile() {
+      errorBox.textContent = '';
+      meta.innerHTML = '';
+      treeContainer.innerHTML = '<div class="muted">Chargement de l’arborescence...</div>';
+
+      try {
+        const response = await fetch('/api/tree', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        currentTree = parseTreeText(result.tree_text);
+        selectedNodePath = currentTree.path;
+        currentViewPath = currentTree.path;
+
+        renderTree();
+        updateSelectionUI();
+        renderBlockDetail();
+      } catch (err) {
+        console.error(err);
+        currentTree = null;
+        selectedNodePath = null;
+        currentViewPath = null;
+        treeContainer.innerHTML = '<div class="muted">Impossible de charger l’arborescence.</div>';
+        errorBox.textContent = `Erreur de chargement : ${err.message}`;
+      }
+    }
+
+    async function loadBlocksFromServer() {
+      try {
+        const response = await fetch('/api/blocks', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        blocksPayload = result.data || {
+          generated_at: new Date().toISOString(),
+          source_tree_root: null,
+          current_view_path: null,
+          depth_setting: 1,
+          blocks: []
+        };
+
+        blocks = Array.isArray(blocksPayload.blocks) ? blocksPayload.blocks : [];
+        normalizeBlocks();
+
+        if (selectedBlockId && !blocks.some(b => b.id === selectedBlockId)) {
+          selectedBlockId = null;
+        }
+
+        if (!selectedBlockId && blocks.length) {
+          selectedBlockId = blocks[0].id;
+        }
+
+        renderBlocks();
+        renderBlockDetail();
+
+        exportStatus.textContent = `${blocks.length} bloc(s) chargé(s) depuis le serveur.`;
+      } catch (err) {
+        console.error(err);
+        exportStatus.textContent = `Erreur de chargement des blocs : ${err.message}`;
+      }
+    }
+
+    async function saveBlocksToServer() {
+      try {
+        syncBlocksPayload();
+
+        const response = await fetch('/api/save-blocks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(blocksPayload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        exportStatus.textContent = 'Blocs enregistrés sur le serveur : blocks_summary.json et blocks_summary.txt';
+      } catch (err) {
+        console.error(err);
+        exportStatus.textContent = `Erreur lors de l'enregistrement serveur : ${err.message}`;
+      }
+    }
+
+    function syncBlocksPayload() {
+      blocksPayload.generated_at = new Date().toISOString();
+      blocksPayload.source_tree_root = currentTree ? currentTree.path : blocksPayload.source_tree_root;
+      blocksPayload.current_view_path = currentViewPath;
+      blocksPayload.depth_setting = getMaxDepth();
+      blocksPayload.blocks = blocks;
+    }
+
+    function normalizeBlocks() {
+      for (const block of blocks) {
+        if (!block.type) block.type = 'block';
+        if (!Array.isArray(block.items)) block.items = [];
+        if (!Array.isArray(block.child_block_ids)) block.child_block_ids = [];
+        if (!Array.isArray(block.parent_block_ids)) block.parent_block_ids = [];
+        if (!block.created_at) block.created_at = new Date().toISOString();
+        if (typeof block.highest_level === 'undefined' || block.highest_level === null) {
+          block.highest_level = block.items.length
+            ? Math.min(...block.items.map(i => i.depth))
+            : null;
+        }
+      }
+    }
+
+    function parseTreeText(text) {
+      const lines = text.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '');
+      if (!lines.length) throw new Error('Fichier vide');
+
+      const cleaned = lines.filter(line => {
+        const trimmed = line.trim();
+        return !/^\d+\s+directories?(,\s+\d+\s+files?)?$/i.test(trimmed)
+          && !/^\d+\s+directories?$/i.test(trimmed)
+          && !/^\d+\s+files?$/i.test(trimmed);
+      });
+
+      const rootName = cleaned[0].trim();
+      const root = createNode(rootName, 'folder', 0, rootName);
+      const stack = [root];
+
+      for (let i = 1; i < cleaned.length; i++) {
+        const parsed = parseTreeLine(cleaned[i]);
+        if (!parsed) continue;
+
+        const { depth, name } = parsed;
+
+        while (stack.length > depth + 1) stack.pop();
+        const parent = stack[stack.length - 1];
+        if (!parent) throw new Error('Parent introuvable pour: ' + name);
+
+        const nodeDepth = depth + 1;
+        const type = guessNodeType(name);
+        const path = parent.path + '/' + name;
+        const node = createNode(name, type, nodeDepth, path);
+
+        parent.children.push(node);
+        stack.push(node);
+      }
+
+      return root;
+    }
+
+    function parseTreeLine(line) {
+      const markerMatch = line.match(/[├└]──\s+/);
+      if (!markerMatch) return null;
+
+      const markerIndex = markerMatch.index;
+      const prefix = line.slice(0, markerIndex);
+      const name = line.slice(markerIndex + markerMatch[0].length).trim();
+      const depth = Math.floor(prefix.length / 4);
+
+      return { depth, name };
+    }
+
+    function createNode(name, type, depth, path) {
+      return { name, type, depth, path, children: [] };
+    }
+
+    function guessNodeType(name) {
+      return /\.[^./\\]+$/.test(name) ? 'file' : 'folder';
+    }
+
+    function getMaxDepth() {
+      return Math.max(0, parseInt(depthInput.value || '0', 10));
+    }
+
+    function renderTree() {
+      treeContainer.innerHTML = '';
+
+      if (!currentTree) {
+        treeContainer.innerHTML = '<div class="muted">Aucune arborescence disponible.</div>';
+        return;
+      }
+
+      const viewNode = findNodeByPath(currentTree, currentViewPath || currentTree.path) || currentTree;
+      currentViewPathEl.textContent = viewNode.path;
+      backBtn.disabled = viewNode.path === currentTree.path;
+
+      const maxDepth = getMaxDepth();
+      const rootList = document.createElement('ul');
+      rootList.className = 'tree-root';
+      rootList.appendChild(renderNode(viewNode, viewNode.depth + maxDepth, true));
+      treeContainer.appendChild(rootList);
+
+      const stats = computeStats(currentTree, getMaxDepth());
+      meta.innerHTML = `
+        <span class="badge">Racine : ${escapeHtml(currentTree.name)}</span>
+        <span class="badge">Vue : ${escapeHtml(viewNode.name)}</span>
+        <span class="badge">Profondeur affichée : ${maxDepth}</span>
+        <span class="badge">Dossiers visibles (global) : ${stats.folders}</span>
+        <span class="badge">Fichiers visibles (global) : ${stats.files}</span>
+        <span class="badge">Blocs : ${blocks.length}</span>
+      `;
+
+      renderBlockSelectOptions();
+    }
+
+    function renderNode(node, absoluteDepthLimit, clickable) {
+      const li = document.createElement('li');
+      li.className = `node ${node.type}`;
+
+      const line = document.createElement('div');
+      line.className = 'node-line';
+      if (node.path === selectedNodePath) line.classList.add('selected');
+
+      const icon = document.createElement('span');
+      icon.className = 'icon';
+      icon.textContent = node.type === 'folder' ? '📁' : '📄';
+
+      const name = document.createElement('span');
+      name.className = 'node-name';
+      name.textContent = node.name;
+      name.title = node.path;
+
+      line.appendChild(icon);
+      line.appendChild(name);
+
+      if (clickable) {
+        line.addEventListener('click', () => {
+          selectedNodePath = node.path;
+          updateSelectionUI();
+          renderTree();
+        });
+
+        if (node.type === 'folder') {
+          line.addEventListener('dblclick', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            currentViewPath = node.path;
+            selectedNodePath = node.path;
+            renderTree();
+            updateSelectionUI();
+          });
+        }
+      }
+
+      li.appendChild(line);
+
+      if (node.children.length > 0 && node.depth < absoluteDepthLimit) {
+        const ul = document.createElement('ul');
+        for (const child of node.children) {
+          if (child.depth <= absoluteDepthLimit) {
+            ul.appendChild(renderNode(child, absoluteDepthLimit, clickable));
+          }
+        }
+        if (ul.children.length > 0) li.appendChild(ul);
+      }
+
+      return li;
+    }
+
+    function updateSelectionUI() {
+      if (!currentTree || !selectedNodePath) {
+        selectionSummary.textContent = 'Aucun élément sélectionné.';
+        createBlockBtn.disabled = true;
+        addToBlockBtn.disabled = true;
+        return;
+      }
+
+      const node = findNodeByPath(currentTree, selectedNodePath);
+      if (!node) {
+        selectionSummary.textContent = 'Sélection introuvable.';
+        createBlockBtn.disabled = true;
+        addToBlockBtn.disabled = true;
+        return;
+      }
+
+      const visibleStats = computeSubtreeStats(node, node.depth + getMaxDepth());
+      selectionSummary.innerHTML = `
+        <b>Nom :</b> ${escapeHtml(node.name)}<br>
+        <b>Chemin :</b> ${escapeHtml(node.path)}<br>
+        <b>Type :</b> ${escapeHtml(node.type)}<br>
+        <b>Niveau :</b> ${escapeHtml(String(node.depth))}<br>
+        <b>Contenu visible depuis cet élément :</b> ${visibleStats.folders} dossiers, ${visibleStats.files} fichiers
+      `;
+
+      createBlockBtn.disabled = false;
+      addToBlockBtn.disabled = !(blockTargetSelect.value && node);
+    }
+
+    function computeStats(root, maxDepth) {
+      let folders = 0;
+      let files = 0;
+
+      function walk(node) {
+        if (node.depth <= maxDepth) {
+          if (node.type === 'folder') folders++;
+          else files++;
+        }
+        for (const child of node.children) {
+          if (child.depth <= maxDepth) walk(child);
+        }
+      }
+
+      walk(root);
+      return { folders, files };
+    }
+
+    function computeSubtreeStats(root, absoluteDepthLimit) {
+      let folders = 0;
+      let files = 0;
+
+      function walk(node) {
+        if (node.depth <= absoluteDepthLimit) {
+          if (node.type === 'folder') folders++;
+          else files++;
+        }
+        for (const child of node.children) {
+          if (child.depth <= absoluteDepthLimit) walk(child);
+        }
+      }
+
+      walk(root);
+      return { folders, files };
+    }
+
+    function findNodeByPath(node, path) {
+      if (!node || !path) return null;
+      if (node.path === path) return node;
+
+      for (const child of node.children) {
+        const found = findNodeByPath(child, path);
+        if (found) return found;
+      }
+
+      return null;
+    }
+
+    function getParentPath(path) {
+      if (!path || !path.includes('/')) return null;
+      return path.split('/').slice(0, -1).join('/');
+    }
+
+    function serializeNodeItem(node) {
+      return {
+        path: node.path,
+        name: node.name,
+        type: node.type,
+        depth: node.depth,
+        added_at: new Date().toISOString()
+      };
+    }
+
+    function renderBlockSelectOptions() {
+      const currentValue = blockTargetSelect.value;
+      blockTargetSelect.innerHTML = '<option value="">Choisir un bloc</option>';
+
+      for (const block of blocks) {
+        const option = document.createElement('option');
+        option.value = block.id;
+        option.textContent = `${block.name || '(sans nom)'} [${block.id}]`;
+        blockTargetSelect.appendChild(option);
+      }
+
+      if (blocks.some(b => b.id === currentValue)) {
+        blockTargetSelect.value = currentValue;
+      }
+
+      addToBlockBtn.disabled = !(blockTargetSelect.value && selectedNodePath);
+    }
+
+    function renderBlockRelationSelectOptions() {
+      const currentChild = childBlockSelect.value;
+      const currentParent = parentBlockSelect.value;
+
+      childBlockSelect.innerHTML = '<option value="">Bloc enfant</option>';
+      parentBlockSelect.innerHTML = '<option value="">Bloc parent</option>';
+
+      for (const block of blocks) {
+        const childOption = document.createElement('option');
+        childOption.value = block.id;
+        childOption.textContent = `${block.name || '(sans nom)'} [${block.id}]`;
+        childBlockSelect.appendChild(childOption);
+
+        const parentOption = document.createElement('option');
+        parentOption.value = block.id;
+        parentOption.textContent = `${block.name || '(sans nom)'} [${block.id}]`;
+        parentBlockSelect.appendChild(parentOption);
+      }
+
+      if (blocks.some(b => b.id === currentChild)) {
+        childBlockSelect.value = currentChild;
+      }
+
+      if (blocks.some(b => b.id === currentParent)) {
+        parentBlockSelect.value = currentParent;
+      }
+
+      updateLinkBlocksButtonState();
+    }
+
+    function updateLinkBlocksButtonState() {
+      const childId = childBlockSelect.value;
+      const parentId = parentBlockSelect.value;
+      linkBlocksBtn.disabled = !(childId && parentId && childId !== parentId);
+    }
+
+    function isDescendantBlock(startId, searchedId) {
+      const startBlock = blocks.find(b => b.id === startId);
+      if (!startBlock) return false;
+
+      if ((startBlock.child_block_ids || []).includes(searchedId)) return true;
+
+      for (const childId of (startBlock.child_block_ids || [])) {
+        if (isDescendantBlock(childId, searchedId)) return true;
+      }
+
+      return false;
+    }
+
+    function generateBlockId() {
+      const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+      const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+      return `BLK-${stamp}-${rand}`;
+    }
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString('fr-FR');
+    }
+
+    function renderBlocks() {
+      blocksList.innerHTML = '';
+      renderBlockSelectOptions();
+      renderBlockRelationSelectOptions();
+
+      if (!blocks.length) {
+        blocksList.innerHTML = '<div class="empty-state">Aucun bloc pour le moment. Sélectionne un fichier ou un dossier à gauche, puis crée un bloc ou ajoute-le à un bloc existant.</div>';
+        return;
+      }
+
+      for (const block of blocks) {
+        const highestLevel = block.items.length ? Math.min(...block.items.map(item => item.depth)) : '-';
+
+        const item = document.createElement('div');
+        item.className = 'block-list-item';
+        if (block.id === selectedBlockId) item.classList.add('selected');
+
+        item.innerHTML = `
+          <div class="block-list-title">
+            <span>${escapeHtml(block.name || '(sans nom)')}</span>
+            <span class="block-id">${escapeHtml(block.id)}</span>
+          </div>
+          <div class="block-list-meta">
+            ${escapeHtml(String(block.items.length))} élément(s) · niveau le plus haut : ${escapeHtml(String(highestLevel))}<br>
+            Créé le : ${escapeHtml(formatDate(block.created_at))}
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          selectedBlockId = block.id;
+          renderBlocks();
+          renderBlockDetail();
+          requestAnimationFrame(() => {
+            blockDetailCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+        });
+
+        blocksList.appendChild(item);
+      }
+    }
+
+    function renderBlockDetail() {
+      blockDetailContainer.innerHTML = '';
+
+      if (!blocks.length) {
+        blockDetailContainer.innerHTML = '<div class="block-detail-empty">Aucun bloc à afficher.</div>';
+        return;
+      }
+
+      let block = blocks.find(b => b.id === selectedBlockId);
+
+      if (!block) {
+        block = blocks[0];
+        selectedBlockId = block.id;
+      }
+
+      const highestLevel = block.items.length ? Math.min(...block.items.map(item => item.depth)) : '-';
+
+      const childNames = (block.child_block_ids || []).map(id => {
+        const b = blocks.find(x => x.id === id);
+        return b ? `${b.name} [${b.id}]` : id;
+      });
+
+      const parentNames = (block.parent_block_ids || []).map(id => {
+        const b = blocks.find(x => x.id === id);
+        return b ? `${b.name} [${b.id}]` : id;
+      });
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'block-detail-content';
+
+      wrapper.innerHTML = `
+        <div class="block-header">
+          <div style="flex:1; min-width:0;">
+            <label class="small">Nom du bloc</label>
+            <input type="text" value="${escapeAttribute(block.name || '')}" data-block-name="${block.id}" />
+          </div>
+          <div class="block-actions">
+            <button class="danger" data-delete-block="${block.id}">Supprimer</button>
+          </div>
+        </div>
+
+        <div class="block-info">
+          <div><b>ID du bloc :</b> ${escapeHtml(block.id)}</div>
+          <div><b>Type :</b> ${escapeHtml(block.type || 'block')}</div>
+          <div><b>Création :</b> ${escapeHtml(formatDate(block.created_at))}</div>
+          <div><b>Éléments dans le bloc :</b> ${escapeHtml(String(block.items.length))}</div>
+          <div><b>Niveau du dossier le plus haut du bloc :</b> ${escapeHtml(String(highestLevel))}</div>
+          <div><b>Blocs parents :</b> ${escapeHtml(parentNames.length ? parentNames.join(', ') : '(aucun)')}</div>
+          <div><b>Blocs enfants :</b> ${escapeHtml(childNames.length ? childNames.join(', ') : '(aucun)')}</div>
+        </div>
+
+        <div class="field">
+          <label>Contexte</label>
+          <textarea data-block-context="${block.id}" placeholder="Décris ici le rôle du bloc, ce qu'il contient, pourquoi il est important...">${escapeHtml(block.context || '')}</textarea>
+        </div>
+
+        <div>
+          <label>Éléments du bloc</label>
+          <div class="block-items" id="detailItemsBox"></div>
+        </div>
+
+        <div>
+          <label>Sous-blocs</label>
+          <div class="block-items" id="detailChildBlocksBox"></div>
+        </div>
+
+        <div>
+          <label>Aperçu du contenu du bloc</label>
+          <div class="block-tree" id="detailPreviewBox"></div>
+        </div>
+      `;
+
+      blockDetailContainer.appendChild(wrapper);
+
+      const detailItemsBox = document.getElementById('detailItemsBox');
+      const detailChildBlocksBox = document.getElementById('detailChildBlocksBox');
+      const detailPreviewBox = document.getElementById('detailPreviewBox');
+
+      if (!block.items.length) {
+        detailItemsBox.innerHTML = '<div class="empty-state">Ce bloc est vide.</div>';
+      } else {
+        for (const item of block.items) {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'block-item';
+          itemDiv.innerHTML = `
+            <div>
+              <div><b>${item.type === 'folder' ? '📁' : '📄'} ${escapeHtml(item.name)}</b></div>
+              <div class="item-meta">${escapeHtml(item.path)} · niveau ${escapeHtml(String(item.depth))}</div>
+            </div>
+            <div>
+              <button class="danger small-btn" data-remove-item="${block.id}" data-item-path="${escapeAttribute(item.path)}">Retirer</button>
+            </div>
+          `;
+          detailItemsBox.appendChild(itemDiv);
+        }
+      }
+
+      if (!(block.child_block_ids || []).length) {
+        detailChildBlocksBox.innerHTML = '<div class="empty-state">Aucun sous-bloc.</div>';
+      } else {
+        for (const childId of block.child_block_ids) {
+          const childBlock = blocks.find(b => b.id === childId);
+
+          const childDiv = document.createElement('div');
+          childDiv.className = 'block-item';
+          childDiv.innerHTML = `
+            <div>
+              <div><b>🧩 ${escapeHtml(childBlock ? childBlock.name : childId)}</b></div>
+              <div class="item-meta">${escapeHtml(childId)}</div>
+            </div>
+            <div>
+              <button class="danger small-btn" data-remove-child-block="${block.id}" data-child-block-id="${childId}">Retirer</button>
+            </div>
+          `;
+          detailChildBlocksBox.appendChild(childDiv);
+        }
+      }
+
+      detailPreviewBox.innerHTML = '';
+
+      if (!block.items.length) {
+        detailPreviewBox.innerHTML = '<div class="muted small">Aucun élément à afficher.</div>';
+      } else {
+        const rootList = document.createElement('ul');
+        rootList.className = 'tree-root';
+
+        for (const item of block.items) {
+          const node = currentTree ? findNodeByPath(currentTree, item.path) : null;
+
+          if (node) {
+            rootList.appendChild(renderNode(node, node.depth + getMaxDepth(), false));
+          } else {
+            const li = document.createElement('li');
+            li.className = 'node ' + item.type;
+            li.innerHTML = `<div class="node-line"><span class="icon">${item.type === 'folder' ? '📁' : '📄'}</span><span class="node-name">${escapeHtml(item.path)} (introuvable)</span></div>`;
+            rootList.appendChild(li);
+          }
+        }
+
+        detailPreviewBox.appendChild(rootList);
+      }
+
+      bindBlockEvents();
+    }
+
+    function bindBlockEvents() {
+      document.querySelectorAll('[data-block-name]').forEach(input => {
+        input.addEventListener('input', (event) => {
+          const id = event.target.getAttribute('data-block-name');
+          const block = blocks.find(b => b.id === id);
+          if (!block) return;
+          block.name = event.target.value;
+          syncBlocksPayload();
+          renderBlocks();
+          renderBlockDetail();
+        });
+      });
+
+      document.querySelectorAll('[data-block-context]').forEach(textarea => {
+        textarea.addEventListener('input', (event) => {
+          const id = event.target.getAttribute('data-block-context');
+          const block = blocks.find(b => b.id === id);
+          if (!block) return;
+          block.context = event.target.value;
+          syncBlocksPayload();
+        });
+      });
+
+      document.querySelectorAll('[data-delete-block]').forEach(button => {
+        button.addEventListener('click', (event) => {
+          const id = event.target.getAttribute('data-delete-block');
+
+          blocks.forEach(block => {
+            block.child_block_ids = (block.child_block_ids || []).filter(childId => childId !== id);
+            block.parent_block_ids = (block.parent_block_ids || []).filter(parentId => parentId !== id);
+          });
+
+          blocks = blocks.filter(b => b.id !== id);
+
+          if (selectedBlockId === id) {
+            selectedBlockId = blocks.length ? blocks[0].id : null;
+          }
+
+          syncBlocksPayload();
+          renderBlocks();
+          renderBlockDetail();
+        });
+      });
+
+      document.querySelectorAll('[data-remove-item]').forEach(button => {
+        button.addEventListener('click', (event) => {
+          const blockId = event.target.getAttribute('data-remove-item');
+          const itemPath = event.target.getAttribute('data-item-path');
+          const block = blocks.find(b => b.id === blockId);
+          if (!block) return;
+          block.items = block.items.filter(item => item.path !== itemPath);
+          block.highest_level = block.items.length
+            ? Math.min(...block.items.map(i => i.depth))
+            : null;
+          syncBlocksPayload();
+          renderBlocks();
+          renderBlockDetail();
+        });
+      });
+
+      document.querySelectorAll('[data-remove-child-block]').forEach(button => {
+        button.addEventListener('click', (event) => {
+          const parentId = event.target.getAttribute('data-remove-child-block');
+          const childId = event.target.getAttribute('data-child-block-id');
+
+          const parentBlock = blocks.find(b => b.id === parentId);
+          const childBlock = blocks.find(b => b.id === childId);
+
+          if (!parentBlock || !childBlock) return;
+
+          parentBlock.child_block_ids = (parentBlock.child_block_ids || []).filter(id => id !== childId);
+          childBlock.parent_block_ids = (childBlock.parent_block_ids || []).filter(id => id !== parentId);
+
+          syncBlocksPayload();
+          renderBlocks();
+          renderBlockDetail();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttribute(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>

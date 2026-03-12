@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+
+rag/documents.json
+rag/embeddings/
