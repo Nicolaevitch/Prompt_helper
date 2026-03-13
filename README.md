@@ -24,6 +24,10 @@ Il permet de :
 ```bash
 git clone https://github.com/Nicolaevitch/Prompt_helper.git
 cd Prompt_helper
+
+python3 -m venv venv 
+source venv/bin/activate
+
 pip install -r requirements.txt
 
 sudo apt update 
