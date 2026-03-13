@@ -32,7 +32,8 @@ pip install -r requirements.txt
 
 sudo apt update 
 
-sudo apt install tree –y 
+sudo apt install tree –y
+curl -fsSL https://ollama.com/install.sh | sh
 ollama pull qwen2.5:7b 
 
  
@@ -47,18 +48,19 @@ ollama pull qwen2.5:7b
 
  
 
-sudo chown -R mdejurquet:mdejurquet /data/mdejurquet/model_ia 
+sudo chown -R mdejurquet:mdejurquet /data/mdejurquet/mon_projet 
 
 Si le projet n'a pas de documentation (summary, dependancies, arborescences..) initialisé avec :
 python3 scripts/init_target_project.py 
+
+## Lancement server: 
 python3 back/server.py  
 
  
-
 ## SSH  
 
 En local :  
-ssh -N -L 9010:127.0.0.1:8010 mdejurquet@obtic-gpu1 
+ssh -N -L 9010:127.0.0.1:8010 mdejurquet@ma-machine 
 
 Page :  
 
