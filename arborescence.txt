@@ -1,0 +1,26 @@
+.
+├── README.md
+├── back
+│   └── server.py
+├── block_dependencies.json
+├── blocks_summary.json
+├── config
+│   └── project_config.json
+├── front
+│   ├── dependencies.html
+│   └── index.html
+├── project_summary.md
+├── rag
+│   ├── ask.py
+│   ├── build_index.py
+│   └── query.py
+├── requirements.txt
+├── scripts
+│   ├── init_target_project.py
+│   └── run_prompt_helper.sh
+└── templates
+    ├── block_dependencies.json
+    ├── blocks_summary.json
+    └── project_summary.md
+
+7 directories, 17 files

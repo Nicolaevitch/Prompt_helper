@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sélection des fichiers à indexer</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #111827;
+      --soft: #eef2ff;
+      --soft-border: #c7d2fe;
+      --danger: #b91c1c;
+      --ok: #166534;
+      --shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1850px;
+      margin: 24px auto;
+      padding: 0 16px 40px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 30px; margin-bottom: 8px; }
+    h2 { font-size: 22px; margin-bottom: 12px; }
+    h3 { font-size: 16px; margin-bottom: 8px; }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    code {
+      background: #f3f4f6;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .nav-link,
+    button {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      font-weight: 700;
+      border: 0;
+      cursor: pointer;
+    }
+
+    button.secondary { background: #4b5563; }
+    button.success { background: var(--ok); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid var(--soft-border);
+    }
+
+    .hint {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f9fafb;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: sticky;
+      top: 14px;
+    }
+
+    .filters {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 700;
+      font-size: 14px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="text"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      font-size: 14px;
+    }
+
+    .check-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .action-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1200px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #eef2f7;
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      z-index: 1;
+      font-size: 13px;
+      color: #374151;
+    }
+
+    tr:hover td {
+      background: #fafcff;
+    }
+
+    .path-cell {
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      font-size: 12px;
+      color: #374151;
+    }
+
+    .tag.always { background: #eef2ff; border-color: #c7d2fe; }
+    .tag.block { background: #ecfeff; border-color: #a5f3fc; }
+    .tag.dep { background: #fef3c7; border-color: #fde68a; }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .error {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .ok {
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    .missing {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .locked {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="topbar">
+        <div>
+          <h1>Sélection des fichiers à indexer</h1>
+          <p>
+            Cette page génère la liste de référence pour le RAG à partir des fichiers <b>always include</b>, des fichiers liés aux <b>blocs</b> et des fichiers liés aux <b>dépendances</b>.
+          </p>
+        </div>
+        <div class="nav-actions">
+          <a href="/index.html" class="nav-link">Retour blocs</a>
+          <a href="/dependencies.html" class="nav-link">Retour dépendances</a>
+          <button id="reloadBtn" class="secondary">Recharger</button>
+          <button id="saveBtn" class="success">Sauvegarder la sélection</button>
+        </div>
+      </div>
+
+      <div class="meta" id="meta"></div>
+
+      <div class="hint">
+        Le backend enregistre la sélection dans <code>index_selection.json</code> et <code>index_selection.txt</code> dans le dossier du projet cible. Ensuite, <code>build_index.py</code> pourra lire ce fichier comme source officielle.
+      </div>
+
+      <div id="status" class="status"></div>
+      <div id="error" class="error"></div>
+    </div>
+
+    <div class="layout">
+      <div class="sidebar">
+        <div class="card">
+          <h2>Filtres</h2>
+
+          <div class="filters">
+            <div>
+              <label for="searchInput">Recherche chemin / bloc</label>
+              <input id="searchInput" type="text" placeholder="main.js, routes.py, api, bloc..." />
+            </div>
+
+            <div>
+              <label for="reasonFilter">Type de lien</label>
+              <select id="reasonFilter">
+                <option value="all">Tous</option>
+                <option value="always_include">Always include</option>
+                <option value="block_linked">Lié à un bloc</option>
+                <option value="dependency_linked">Lié à une dépendance</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="selectionFilter">Sélection</label>
+              <select id="selectionFilter">
+                <option value="all">Tous</option>
+                <option value="selected">Sélectionnés</option>
+                <option value="unselected">Non sélectionnés</option>
+              </select>
+            </div>
+
+            <label class="check-row">
+              <input id="existingOnlyCheckbox" type="checkbox" />
+              <span>Afficher seulement les fichiers existants</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Actions rapides</h2>
+          <div class="action-list">
+            <button id="selectVisibleBtn" class="secondary">Sélectionner les lignes visibles</button>
+            <button id="unselectVisibleBtn" class="secondary">Désélectionner les lignes visibles</button>
+            <button id="selectBlocksBtn" class="secondary">Sélectionner tous les block_linked</button>
+            <button id="selectDepsBtn" class="secondary">Sélectionner tous les dependency_linked</button>
+            <button id="resetBtn" class="secondary">Réinitialiser selon le serveur</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Fichiers candidats</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px;">Choix</th>
+                <th style="width:120px;">Statut</th>
+                <th>Chemin</th>
+                <th style="width:180px;">Raisons</th>
+                <th style="width:260px;">Blocs</th>
+                <th style="width:260px;">Dépendances</th>
+                <th style="width:90px;">Priorité</th>
+                <th style="width:120px;">Type</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const metaEl = document.getElementById('meta');
+    const statusEl = document.getElementById('status');
+    const errorEl = document.getElementById('error');
+    const tableBody = document.getElementById('tableBody');
+
+    const reloadBtn = document.getElementById('reloadBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const searchInput = document.getElementById('searchInput');
+    const reasonFilter = document.getElementById('reasonFilter');
+    const selectionFilter = document.getElementById('selectionFilter');
+    const existingOnlyCheckbox = document.getElementById('existingOnlyCheckbox');
+
+    const selectVisibleBtn = document.getElementById('selectVisibleBtn');
+    const unselectVisibleBtn = document.getElementById('unselectVisibleBtn');
+    const selectBlocksBtn = document.getElementById('selectBlocksBtn');
+    const selectDepsBtn = document.getElementById('selectDepsBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let allItems = [];
+    let dataPayload = null;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadCandidates();
+    });
+
+    reloadBtn.addEventListener('click', loadCandidates);
+    saveBtn.addEventListener('click', saveSelection);
+
+    searchInput.addEventListener('input', renderTable);
+    reasonFilter.addEventListener('change', renderTable);
+    selectionFilter.addEventListener('change', renderTable);
+    existingOnlyCheckbox.addEventListener('change', renderTable);
+
+    selectVisibleBtn.addEventListener('click', () => bulkSetVisible(true));
+    unselectVisibleBtn.addEventListener('click', () => bulkSetVisible(false));
+    selectBlocksBtn.addEventListener('click', () => bulkSetByReason('block_linked', true));
+    selectDepsBtn.addEventListener('click', () => bulkSetByReason('dependency_linked', true));
+    resetBtn.addEventListener('click', loadCandidates);
+
+    async function loadCandidates() {
+      errorEl.textContent = '';
+      statusEl.textContent = 'Chargement des candidats à l’indexation...';
+
+      try {
+        const response = await fetch('/api/index-selection/candidates', { cache: 'no-store' });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        dataPayload = result.data || {};
+        allItems = Array.isArray(dataPayload.items)
+          ? dataPayload.items.map(item => ({ ...item }))
+          : [];
+
+        renderMeta();
+        renderTable();
+        statusEl.textContent = `Chargé : ${allItems.length} candidat(s).`;
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '';
+        errorEl.textContent = `Erreur de chargement : ${err.message}`;
+        dataPayload = null;
+        allItems = [];
+        renderMeta();
+        renderTable();
+      }
+    }
+
+    function renderMeta() {
+      metaEl.innerHTML = '';
+
+      if (!dataPayload || !dataPayload.summary) return;
+
+      const s = dataPayload.summary;
+      const projectRoot = dataPayload.project_root || '-';
+
+      metaEl.innerHTML = `
+        <span class="badge">Projet : ${escapeHtml(projectRoot)}</span>
+        <span class="badge">Total candidats : ${escapeHtml(String(s.total_candidates || 0))}</span>
+        <span class="badge">Sélectionnés : ${escapeHtml(String(getSelectedCount()))}</span>
+        <span class="badge">Always include : ${escapeHtml(String(s.always_include_count || 0))}</span>
+        <span class="badge">Block linked : ${escapeHtml(String(s.block_linked_count || 0))}</span>
+        <span class="badge">Dependency linked : ${escapeHtml(String(s.dependency_linked_count || 0))}</span>
+      `;
+    }
+
+    function getFilteredItems() {
+      const search = (searchInput.value || '').trim().toLowerCase();
+      const reason = reasonFilter.value;
+      const selection = selectionFilter.value;
+      const existingOnly = existingOnlyCheckbox.checked;
+
+      return allItems.filter(item => {
+        if (existingOnly && !item.exists) return false;
+
+        if (reason !== 'all' && !(item.reasons || []).includes(reason)) {
+          return false;
+        }
+
+        if (selection === 'selected' && !item.selected) return false;
+        if (selection === 'unselected' && item.selected) return false;
+
+        if (search) {
+          const haystack = [
+            item.path || '',
+            ...(item.block_names || []),
+            ...(item.dependency_pairs || []),
+            ...(item.reasons || [])
+          ].join(' ').toLowerCase();
+
+          if (!haystack.includes(search)) return false;
+        }
+
+        return true;
+      });
+    }
+
+    function renderTable() {
+      tableBody.innerHTML = '';
+
+      const rows = getFilteredItems();
+
+      if (!rows.length) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" class="small">Aucun fichier ne correspond aux filtres actuels.</td>
+          </tr>
+        `;
+        renderMeta();
+        return;
+      }
+
+      for (const item of rows) {
+        const tr = document.createElement('tr');
+
+        const reasonsHtml = (item.reasons || []).map(reason => {
+          let cls = 'tag';
+          if (reason === 'always_include') cls += ' always';
+          if (reason === 'block_linked') cls += ' block';
+          if (reason === 'dependency_linked') cls += ' dep';
+          return `<span class="${cls}">${escapeHtml(reason)}</span>`;
+        }).join('');
+
+        const blocksHtml = (item.block_names || []).length
+          ? `<div class="tag-list">${item.block_names.map(x => `<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>`
+          : `<span class="small">-</span>`;
+
+        const depsHtml = (item.dependency_pairs || []).length
+          ? `<div class="tag-list">${item.dependency_pairs.map(x => `<span class="tag">${escapeHtml(x)}</span>`).join('')}</div>`
+          : `<span class="small">-</span>`;
+
+        tr.innerHTML = `
+          <td>
+            <input type="checkbox" ${item.selected ? 'checked' : ''} ${item.locked ? 'disabled' : ''} data-path="${escapeAttribute(item.path)}" />
+          </td>
+          <td>
+            ${
+              item.exists
+                ? `<div class="ok">OK</div>`
+                : `<div class="missing">Absent</div>`
+            }
+            ${item.locked ? `<div class="locked">verrouillé</div>` : ``}
+          </td>
+          <td class="path-cell">${escapeHtml(item.path || '')}</td>
+          <td><div class="tag-list">${reasonsHtml || '<span class="small">-</span>'}</div></td>
+          <td>${blocksHtml}</td>
+          <td>${depsHtml}</td>
+          <td>${escapeHtml(String(item.priority ?? ''))}</td>
+          <td>${escapeHtml(item.type_hint || '')}</td>
+        `;
+
+        tableBody.appendChild(tr);
+      }
+
+      document.querySelectorAll('input[type="checkbox"][data-path]').forEach(checkbox => {
+        checkbox.addEventListener('change', (event) => {
+          const path = event.target.getAttribute('data-path');
+          const item = allItems.find(x => x.path === path);
+          if (!item || item.locked) return;
+          item.selected = !!event.target.checked;
+          renderMeta();
+        });
+      });
+
+      renderMeta();
+    }
+
+    function bulkSetVisible(value) {
+      const visiblePaths = new Set(getFilteredItems().map(item => item.path));
+      for (const item of allItems) {
+        if (!visiblePaths.has(item.path)) continue;
+        if (item.locked) continue;
+        item.selected = value;
+      }
+      renderTable();
+    }
+
+    function bulkSetByReason(reason, value) {
+      for (const item of allItems) {
+        if (!(item.reasons || []).includes(reason)) continue;
+        if (item.locked) continue;
+        item.selected = value;
+      }
+      renderTable();
+    }
+
+    function getSelectedCount() {
+      return allItems.filter(item => item.selected).length;
+    }
+
+    async function saveSelection() {
+      errorEl.textContent = '';
+      statusEl.textContent = 'Sauvegarde de la sélection en cours...';
+
+      try {
+        const selectedPaths = allItems
+          .filter(item => item.selected)
+          .map(item => item.path);
+
+        const response = await fetch('/api/save-index-selection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ selected_paths: selectedPaths })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || `HTTP ${response.status}`);
+        }
+
+        statusEl.innerHTML = `
+          Sélection enregistrée : <b>${escapeHtml(String(result.selected_count || 0))}</b> fichier(s).<br>
+          JSON : <code>${escapeHtml(result.json_file || '')}</code><br>
+          TXT : <code>${escapeHtml(result.txt_file || '')}</code>
+        `;
+
+        await loadCandidates();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = '';
+        errorEl.textContent = `Erreur de sauvegarde : ${err.message}`;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttribute(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>

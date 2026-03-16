@@ -34,7 +34,7 @@ sudo apt update
 
 sudo apt install tree –y
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5:7b 
+ollama pull qwen3.5:35b-a3b
 
  
 
