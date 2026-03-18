@@ -34,7 +34,11 @@ sudo apt update
 
 sudo apt install tree –y
 
-Telecharger le model dans un dossier avec suffisament d'espace (23GB) :
+## Actualiser l'arborescence (si besoin) :
+sudo apt install tree –y
+tree . > arborescence.txt  
+
+## Telecharger le model dans un dossier avec suffisament d'espace (23GB) :
 curl -fsSL https://ollama.com/install.sh | sh
 mkdir -p /data/ollama_models
 export OLLAMA_MODELS=/data/ollama_models
