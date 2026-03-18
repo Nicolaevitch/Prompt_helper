@@ -33,7 +33,11 @@ pip install -r requirements.txt
 sudo apt update 
 
 sudo apt install tree –y
+
+Telecharger le model dans un dossier avec suffisament d'espace (23GB) :
 curl -fsSL https://ollama.com/install.sh | sh
+mkdir -p /data/ollama_models
+export OLLAMA_MODELS=/data/ollama_models
 ollama pull qwen3.5:35b-a3b
 
  
