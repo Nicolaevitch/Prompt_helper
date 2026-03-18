@@ -14,7 +14,7 @@ PROJECT_ROOT = Path(config["project_root"]).resolve()
 MODEL = "qwen3.5:35b-a3b"
 
 
-def build_context(results, max_docs=6):
+def build_context(results, max_docs=200):
     context_parts = []
 
     for score, doc in results[:max_docs]:

@@ -15,8 +15,8 @@ PROJECT_ROOT = Path(config["project_root"]).resolve()
 DOCS_FILE = APP_ROOT / "rag" / "documents.json"
 EMB_FILE = APP_ROOT / "rag" / "embeddings" / "embeddings.json"
 
-TOP_K_INITIAL = 8
-TOP_K_FINAL = 8
+TOP_K_INITIAL = 25
+TOP_K_FINAL = 25
 
 print("Loading embedding model...")
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -136,6 +136,7 @@ def detect_doc_intent(query):
         "workflow",
         "chaine",
         "chaîne",
+        "logique",
     ]
 
     code_terms = [
@@ -299,7 +300,7 @@ def expand_with_graph(seed_block_ids, matched_file_paths, intent):
             if parent_id in block_by_id:
                 related_doc_ids.add(block_by_id[parent_id]["doc_id"])
 
-        for child_id in list(parent_to_children.get(block_id, set()))[:3]:
+        for child_id in list(parent_to_children.get(block_id, set()))[:10]:
             if child_id in block_by_id:
                 related_doc_ids.add(block_by_id[child_id]["doc_id"])
 
