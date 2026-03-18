@@ -417,28 +417,33 @@ type   : {doc['doc_type']}
     return header + text
 
 
-print("\nSuper RAG + graphe ready.\n")
+def main():
+    print("\nSuper RAG + graphe ready.\n")
 
-while True:
-    query = input("> ")
+    while True:
+        user_query = input("> ")
 
-    if query.strip().lower() in {"exit", "quit"}:
-        break
+        if user_query.strip().lower() in {"exit", "quit"}:
+            break
 
-    results, debug = search(query)
+        results, debug = search(user_query)
 
-    print("\nAnalyse requête :")
-    print("project_root       :", debug["project_root"])
-    print("docs_file          :", debug["docs_file"])
-    print("emb_file           :", debug["emb_file"])
-    print("intent             :", debug["intent"])
-    print("file_terms         :", debug["file_terms"])
-    print("matched_file_paths :", debug["matched_file_paths"])
-    print("seed_blocks        :", debug["seed_blocks"])
+        print("\nAnalyse requête :")
+        print("project_root       :", debug["project_root"])
+        print("docs_file          :", debug["docs_file"])
+        print("emb_file           :", debug["emb_file"])
+        print("intent             :", debug["intent"])
+        print("file_terms         :", debug["file_terms"])
+        print("matched_file_paths :", debug["matched_file_paths"])
+        print("seed_blocks        :", debug["seed_blocks"])
 
-    print("\nTop résultats :\n")
+        print("\nTop résultats :\n")
 
-    for score, doc in results:
-        print(f"score : {score:.3f}")
-        print(format_doc(doc))
-        print()
+        for score, doc in results:
+            print(f"score : {score:.3f}")
+            print(format_doc(doc))
+            print()
+
+
+if __name__ == "__main__":
+    main()
