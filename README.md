@@ -39,9 +39,13 @@ sudo apt install tree –y
 tree . > arborescence.txt  
 
 ## Telecharger le model dans un dossier avec suffisament d'espace (23GB) :
+mkdir -p /mnt/c/Users/XXX/Documents/ollama_models
+export OLLAMA_MODELS=/mnt/c/Users/xxxx/Documents/ollama_models
+
+sudo apt update
+sudo apt install zstd -y
+
 curl -fsSL https://ollama.com/install.sh | sh
-mkdir -p /data/ollama_models
-export OLLAMA_MODELS=/data/ollama_models
 ollama pull qwen3.5:35b-a3b
 
  
