@@ -80,10 +80,10 @@ http://127.0.0.1:9010/
 
 ##  créer/relancer les fichiers d'informaiton pour le rag 
 
-python rag/build_index.py
+python3 rag/build_index.py
 
 
 ##  lancer le chat :  
 
-python rag/query.py 
-python rag/ask.py 
+python3 rag/query.py 
+python3 rag/ask.py 
