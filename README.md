@@ -78,6 +78,8 @@ Page :
 
 http://127.0.0.1:9010/
 
+##  Sélectionner sur la page les fichiers à indexer
+
 ##  créer/relancer les fichiers d'informaiton pour le rag 
 
 python3 rag/build_index.py
